@@ -1,11 +1,20 @@
 import {collideVehicles} from './collisions.mjs';
 export const ROUND_SECONDS=60,FLIGHT_SECONDS=2.25,JUMP_COOLDOWN=.8,ROAD_LIMIT=5.45;
 export const TRAFFIC_TYPES={bus:{width:2.45,length:9.4,height:3.35,label:'公交车'},taxi:{width:2.05,length:4.65,height:1.65,label:'的士'},truck:{width:2.55,length:10.7,height:3.75,label:'大卡车'},sprinkler:{width:2.5,length:7.3,height:2.95,label:'洒水车'}};
-export function difficulty(level,remaining=60){const n=Math.max(0,level-1);const surge=remaining<=20,factor=surge?.58:1;return {surge,rearInterval:Math.max(2.2,Math.max(3.8,7.8-n*.65)*factor),suvInterval:Math.max(2.9,Math.max(5,11.4-n*.9)*factor),rearSpeed:30+n*4,suvSpeed:48+n*5,warning:Math.max(.7,1.25-n*.055),speed:120+n*10};}
+export function difficulty(level,remaining=60){const n=Math.max(0,level-1);const surge=remaining<=20,factor=surge?.58:1;return {surge,waveSize:surge?(level>=4?3:2):level>=5?3:level>=3?2:1,rearInterval:Math.max(2.2,Math.max(3.8,7.8-n*.65)*factor),suvInterval:Math.max(2.9,Math.max(5,11.4-n*.9)*factor),rearSpeed:30+n*4,suvSpeed:48+n*5,warning:Math.max(.7,1.25-n*.055),speed:120+n*10};}
 export function createState(seed=82){return {phase:'intro',surge:false,level:1,remaining:ROUND_SECONDS,totalTime:0,score:0,dodges:0,health:1,x:0,y:0,steer:0,jumpT:-1,cooldown:0,jumpHeld:false,rears:[],suvs:[],batteries:[],traffic:[],billboards:[],wrecks:[],distance:0,nextBillboardAt:120,nextTraffic:5.2,trafficCycle:0,nextRear:4,nextSuv:8.8,transition:0,seed,id:0,events:[]};}
 function rand(s){s.seed=(s.seed*16807)%2147483647;return(s.seed-1)/2147483646;}
 export function begin(s){Object.assign(s,createState(s.seed));s.phase='playing';return s;}
-export function flight(t){if(t<0||t>=FLIGHT_SECONDS)return {height:0,roll:0};const p=t/FLIGHT_SECONDS,ease=v=>v*v*(3-2*v),f=Math.max(0,Math.min(1,(p-.2)/.6));const height=p<.3?5.4*ease(p/.3):p>.65?5.4*(1-ease((p-.65)/.35)):5.4;return {height,roll:Math.PI*2*ease(f)};}
+// Reference: level lift, short hover, fast barrel roll, level recovery, vertical descent.
+export function flight(t){
+ if(t<0||t>=FLIGHT_SECONDS)return {height:0,roll:0,thrust:0,stage:'贴地行驶'};
+ const p=t/FLIGHT_SECONDS,ease=v=>v*v*v*(v*(v*6-15)+10),clamp=v=>Math.max(0,Math.min(1,v));
+ const height=p<.28?5.4*ease(p/.28):p>.76?5.4*(1-ease((p-.76)/.24)):5.4;
+ const roll=Math.PI*2*ease(clamp((p-.38)/.32));
+ const stage=p<.28?'水平升空':p<.38?'悬停蓄势':p<.70?'360° 横向空翻':p<.76?'回正稳定':'垂直降落';
+ const thrust=p<.28?1:p<.76?.48:.7;
+ return {height,roll,thrust,stage};
+}
 export function nextLevel(s){s.level++;s.surge=false;s.phase='playing';s.remaining=ROUND_SECONDS;s.health=1;s.rears=[];s.suvs=[];s.batteries=[];s.traffic=[];s.billboards=[];s.wrecks=[];s.distance=0;s.nextBillboardAt=120;s.nextTraffic=4.5;s.trafficCycle=0;s.nextRear=2.8;s.nextSuv=6.1;s.jumpT=-1;s.y=0;s.cooldown=0;s.jumpHeld=false;s.events.push({type:'level',level:s.level});}
 function hit(s,kind){if(s.phase!=='playing')return;s.health=0;s.phase='over';s.events.push({type:'hit',kind},{type:'over',kind});}
 export function step(s,delta,input={}){s.events=[];const dt=Math.max(0,Math.min(delta,.05));if(s.phase==='between'){s.transition-=dt;if(s.transition<=0)nextLevel(s);return s.events;}if(s.phase!=='playing')return s.events;
@@ -17,11 +26,11 @@ export function step(s,delta,input={}){s.events=[];const dt=Math.max(0,Math.min(
  s.distance+=d.speed/3.6*dt;s.nextTraffic-=dt;
  if(s.nextTraffic<=0){const types=Object.keys(TRAFFIC_TYPES),type=types[s.trafficCycle++%types.length];s.traffic.push({id:++s.id,type,x:[-4.4,0,4.4][Math.floor(rand(s)*3)],z:-145,speed:13+rand(s)*5+(s.level-1)*1.3,resolved:false});s.nextTraffic=Math.max(4.8,8-(s.level-1)*.3)+rand(s)*2;}
  if(s.distance>=s.nextBillboardAt){const side=rand(s)>.5?1:-1;s.billboards.push({id:++s.id,side,x:side*3.75,z:-160,width:6.2,bottom:4.65,top:6.65,ad:Math.floor(rand(s)*4),resolved:false});s.nextBillboardAt+=260+rand(s)*120;}
- if(s.nextRear<=0){s.rears.push({id:++s.id,x:s.x,z:48,age:0,warning:d.warning,speed:d.rearSpeed,resolved:false});s.nextRear=d.rearInterval+rand(s)*1.1;s.events.push({type:'rearWarning'});}
- if(s.nextSuv<=0){const side=rand(s)>.5?1:-1;s.suvs.push({id:++s.id,x:Math.max(-4.8,Math.min(4.8,s.x+side*2.6)),z:-115,speed:d.suvSpeed,dropped:false,resolved:false});s.nextSuv=d.suvInterval+rand(s)*1.5;}
+ if(s.nextRear<=0){const lanes=d.waveSize===3?[-4.4,0,4.4]:[s.x,...[-4.4,0,4.4].filter(x=>Math.abs(x-s.x)>2.7).sort((a,b)=>Math.abs(b-s.x)-Math.abs(a-s.x))];for(let i=0;i<d.waveSize;i++)s.rears.push({id:++s.id,x:lanes[i],z:48+i*9,age:0,warning:d.warning+i*.14,speed:d.rearSpeed,resolved:false,formationOffset:i*9});if(d.waveSize>1)s.events.push({type:'rearWave',count:d.waveSize});s.nextRear=d.rearInterval+rand(s)*1.1;s.events.push({type:'rearWarning'});}
+ if(s.nextSuv<=0){const side=rand(s)>.5?1:-1;const lanes=side>0?[-4.4,0,4.4]:[4.4,0,-4.4];for(let i=0;i<d.waveSize;i++)s.suvs.push({id:++s.id,x:d.waveSize===1?Math.max(-4.8,Math.min(4.8,s.x+side*2.6)):lanes[i],z:-115-i*15,speed:d.suvSpeed,dropped:false,resolved:false});if(d.waveSize>1)s.events.push({type:'batteryWave',count:d.waveSize});s.nextSuv=d.suvInterval+rand(s)*1.5;}
  collideVehicles(s,dt,d.speed/3.6);
  for(const w of s.wrecks){const half=w.length/2+2.6;if(w.previousZ<half&&w.z>-half&&Math.abs(w.x-s.x)<w.width/2+1.02&&s.y<w.height){hit(s,'wreck');return s.events;}}
- for(const e of s.rears){const oldZ=e.z;e.age+=dt;if(e.age>e.warning)e.z-=e.speed*dt;else e.z=48-(e.age/e.warning)*4;
+ for(const e of s.rears){const oldZ=e.z;e.age+=dt;if(e.age>e.warning)e.z-=e.speed*dt;else e.z=48+(e.formationOffset||0)-(e.age/e.warning)*4;
   if(e.age-dt<=e.warning&&e.age>e.warning)s.events.push({type:'rearCharge'});
   if(oldZ> -4.8&&e.z<4.8&&Math.abs(e.x-s.x)<2&&s.y<2.9){if(!e.resolved){hit(s,'rear');e.resolved=true;return s.events;}}
   if(e.z< -6&&!e.resolved){e.resolved=true;s.dodges++;s.score+=100;s.events.push({type:'dodge',kind:'rear'});}}

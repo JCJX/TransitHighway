@@ -1,0 +1,4 @@
+Neon Lift — original AI-composed procedural racing soundtrack, 136 BPM.
+Composition and music.mjs synthesizer: CC0 1.0 Universal.
+You may use, modify and redistribute without attribution. No third-party recordings or samples are used.
+https://creativecommons.org/publicdomain/zero/1.0/
