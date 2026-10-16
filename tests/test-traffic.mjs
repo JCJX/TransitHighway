@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {createState,begin,step,difficulty,nextLevel,TRAFFIC_TYPES} from '../engine.mjs';
+import {makeTraffic,makeBillboard} from '../traffic.mjs';
+function fresh(){const s=begin(createState());s.nextRear=s.nextSuv=s.nextTraffic=1e6;s.nextBillboardAt=1e9;s.surge=true;return s;}
+for(const type of Object.keys(TRAFFIC_TYPES)){for(const air of [false,true]){const s=fresh();s.traffic=[{id:1,type,x:0,z:0,speed:15,resolved:false}];if(air)s.jumpT=1;step(s,.016);assert.equal(s.phase,air?'playing':'over');}}
+for(const side of [-1,1])for(const air of [false,true])for(const avoid of [false,true]){const s=fresh();s.billboards=[{id:1,side,x:side*3.75,z:0,width:6.2,bottom:4.65,top:6.65,resolved:false}];if(air)s.jumpT=1;if(avoid)s.x=-side*4;step(s,.016);assert.equal(s.phase,air&&!avoid?'over':'playing');}
+function count(level,remaining){const s=fresh();s.surge=remaining<=20;s.level=level;s.remaining=remaining;s.nextRear=s.nextSuv=.01;let rears=0,suvs=0;for(let i=0;i<19*60;i++){step(s,1/60);rears+=s.rears.length;suvs+=s.suvs.length;s.rears=[];s.suvs=[];s.batteries=[];}return {rears,suvs};}
+const early=count(1,60),late=count(1,20),higher=count(5,20);assert.ok(late.rears>early.rears);assert.ok(late.suvs>early.suvs);assert.ok(higher.rears>=late.rears&&higher.suvs>=late.suvs);const s=fresh();s.surge=false;s.remaining=20.01;assert.equal(step(s,.02).filter(e=>e.type==='surge').length,1);assert.equal(step(s,.02).filter(e=>e.type==='surge').length,0);nextLevel(s);assert.equal(s.surge,false);assert.ok(difficulty(2).suvInterval<difficulty(1).suvInterval);
+for(const model of [...Object.keys(TRAFFIC_TYPES).map(makeTraffic),makeBillboard(0,1),makeBillboard(1,-1)])model.traverse(o=>{if(o.isMesh)assert.ok([...o.geometry.attributes.position.array].every(Number.isFinite));});
+console.log('PASS: all traffic fatal on ground and cleared in flight; both billboards safe on ground, fatal at peak and avoidable by steering; final 20 seconds increase BOTH enemy spawn counts; later levels increase difficulty; surge triggers once and resets.',{early,late,higher});

@@ -1,0 +1,10 @@
+{
+  "name": "aerial-run-one-minute",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs",
+    "test": "node tests/test-engine.mjs && node tests/test-wreck.mjs && node tests/test-traffic.mjs && node tests/test-collisions.mjs"
+  }
+}

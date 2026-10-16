@@ -1,0 +1,2 @@
+// Same coordinate convention as playerRoll: rotated model points relative to its center.
+export function wreckPose(time,points,initialHeight=0){const t=Math.max(0,Math.min(1,time/1.45)),ease=t*t*(3-2*t),roll=-1.72*ease;let min=Infinity;const sn=Math.sin(roll),cs=Math.cos(roll);for(let i=0;i<points.length;i+=3){min=Math.min(min,points[i]*sn+points[i+1]*cs);}return {roll,yaw:.24*ease,y:.02-min+Math.max(0,initialHeight)*Math.exp(-time*5)+.14*Math.sin(Math.PI*t),z:-1.8*(1-Math.exp(-time*2.1))};}
