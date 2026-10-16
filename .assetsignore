@@ -1,0 +1,12 @@
+node_modules/
+.git/
+.github/
+.wrangler/
+tests/
+package.json
+package-lock.json
+bun.lock*
+serve.mjs
+README.md
+wrangler.jsonc
+wrangler.toml
