@@ -4,18 +4,6 @@
 
 每关 **60 秒**，过关后自动进入下一关，来车速度和频率提高。**任何一次碰撞都立即失败**，随后播放车辆翻倒、零件脱落、火花和起火效果。没有护盾、无敌期或额外生命。
 
-## 上传到 GitHub，让朋友试玩
-
-1. 解压 `aerial-run-one-minute-source.zip`。打开解压后的文件夹。
-2. 在 GitHub 新建一个公开仓库，把解压文件夹**里面的全部文件和目录**上传到仓库根目录。根目录必须直接看见 `index.html`，并包含 `.github/workflows/pages.yml`。不要只上传 ZIP，也不要把整套文件再嵌套在另一个文件夹里。
-3. 打开仓库 **Settings → Pages**，在 **Build and deployment → Source** 中选择 **GitHub Actions**。
-4. 打开仓库 **Actions**，找到 **Deploy Aerial Run to GitHub Pages**。如果首次上传时尚未启用 Pages 导致任务失败，点击 **Run workflow** 重新运行。成功后，Pages 页面和工作流的部署结果会显示可分享的网址。
-5. 把 GitHub Pages 的网址发给朋友。分享的是游戏网页地址，不是仓库文件地址。
-
-工作流已随源码提供，无须填写密钥、安装依赖或执行构建。GitHub 项目子路径也能运行，资源使用相对地址。
-
-GitHub 官方参考：[使用 GitHub Pages 自定义工作流](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)。
-
 ## 在本地试玩
 
 安装 Node.js 20 或更新版本，在这个文件夹打开终端，运行：
