@@ -9,4 +9,3 @@ bun.lock*
 serve.mjs
 README.md
 wrangler.jsonc
-wrangler.toml
